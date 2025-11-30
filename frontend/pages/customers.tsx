@@ -1,4 +1,4 @@
-// frontend/pages/customers.tsx (フルコード)
+// frontend/pages/customers.tsx (フルコード - 修正版)
 
 import Head from 'next/head';
 import { useState } from 'react';
@@ -6,7 +6,7 @@ import { supabase } from '@/utils/supabaseClient';
 import Sidebar from '@/components/Sidebar';
 import { useAuth } from '@/components/AuthContainer';
 import AuthForm from '@/components/AuthForm';
-import CustomerList from '@/components/CustomerList'; // ★追加
+import CustomerList from '@/components/CustomerList'; 
 
 // 顧客登録フォームコンポーネント
 const CustomerForm: React.FC<{ onRegistered: () => void }> = ({ onRegistered }) => {
@@ -38,7 +38,7 @@ const CustomerForm: React.FC<{ onRegistered: () => void }> = ({ onRegistered }) 
             setAddress('');
             setContactName('');
             
-            onRegistered(); // ★登録完了後、親コンポーネントに通知
+            onRegistered(); // 登録完了後、親コンポーネントに通知
         }
         setLoading(false);
     };
@@ -54,17 +54,17 @@ const CustomerForm: React.FC<{ onRegistered: () => void }> = ({ onRegistered }) 
                 <div>
                     <label className="block text-sm font-medium text-gray-700">顧客名*</label>
                     <input type="text" value={name} onChange={(e) => setName(e.target.value)} required 
-                           className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
+                           className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900" /> {/* ★文字色修正 */}
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">住所</label>
                     <input type="text" value={address} onChange={(e) => setAddress(e.target.value)}
-                           className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
+                           className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900" /> {/* ★文字色修正 */}
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">担当者名</label>
                     <input type="text" value={contactName} onChange={(e) => setContactName(e.target.value)}
-                           className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
+                           className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900" /> {/* ★文字色修正 */}
                 </div>
                 
                 <button type="submit" disabled={loading}
@@ -81,11 +81,11 @@ const CustomerForm: React.FC<{ onRegistered: () => void }> = ({ onRegistered }) 
 // メインページ（認証チェックとレイアウト）
 const CustomersPage = () => {
     const { user, role, loading } = useAuth();
-    const [registerKey, setRegisterKey] = useState(0); // ★状態変数: 顧客登録が成功したらこれを更新
+    const [registerKey, setRegisterKey] = useState(0); 
 
     // 顧客登録成功時に呼び出す関数
     const handleCustomerRegistered = () => {
-        setRegisterKey(prev => prev + 1); // キーを更新してCustomerListを再読み込みさせる
+        setRegisterKey(prev => prev + 1); 
     };
 
     // 認証情報確認中
@@ -117,10 +117,10 @@ const CustomersPage = () => {
                 <main className="flex-grow p-8 bg-gray-50">
                     <h1 className="text-3xl font-bold mb-8 text-gray-800">顧客管理モジュール</h1>
                     
-                    {/* ★登録完了時に一覧を更新するハンドラーを渡す */}
+                    {/* 登録完了時に一覧を更新するハンドラーを渡す */}
                     <CustomerForm onRegistered={handleCustomerRegistered} /> 
                     
-                    {/* ★登録キーを渡すことで、登録完了時に一覧が自動更新される */}
+                    {/* 登録されたキーを渡すことで、一覧を自動更新する */}
                     <CustomerList onCustomerRegistered={registerKey} /> 
                 </main>
             </div>

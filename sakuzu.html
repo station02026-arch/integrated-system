@@ -1,0 +1,1987 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>配管図ツール v3.2 (チーズ位置調整版)</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #f3f4f6;
+            color: #111827;
+            user-select: none;
+        }
+
+        .app {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 320px;
+            background: #111827;
+            color: #e5e7eb;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #374151;
+        }
+
+        .sidebar-header {
+            padding: 12px;
+            background: #0f172a;
+            border-bottom: 1px solid #374151;
+        }
+
+        .sidebar-header h1 {
+            font-size: 16px;
+            margin: 0 0 8px;
+            font-weight: bold;
+            color: #60a5fa;
+        }
+
+        .top-actions {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        
+        .top-actions button {
+            flex: 1;
+            font-size: 11px;
+            padding: 6px;
+            border-radius: 4px;
+            border: 1px solid #4b5563;
+            background: #374151;
+            color: #e5e7eb;
+            cursor: pointer;
+        }
+        
+        .top-actions button:hover {
+            background: #4b5563;
+        }
+
+        /* Mode Tabs */
+        .mode-tabs {
+            display: flex;
+            background: #1f2937;
+            padding: 4px;
+            border-radius: 6px;
+            gap: 4px;
+        }
+
+        .mode-tab {
+            flex: 1;
+            padding: 8px;
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+            border: none;
+            background: transparent;
+            color: #9ca3af;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .mode-tab:hover {
+            background: #374151;
+            color: #e5e7eb;
+        }
+
+        .mode-tab.active {
+            background: #2563eb;
+            color: #ffffff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        
+        .mode-tab.label-mode.active {
+            background: #10b981; /* Green for Label Mode */
+        }
+
+        /* Sidebar Content Area */
+        .sidebar-content {
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .toolbar-group {
+            border: 1px solid #374151;
+            border-radius: 8px;
+            padding: 8px;
+            background: #020617;
+        }
+
+        .toolbar-group.highlight {
+            border: 2px solid #10b981;
+            background: #064e3b;
+        }
+
+        .toolbar-title {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #a5b4fc;
+        }
+
+        .tool-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .tool-buttons button {
+            flex: 1 0 calc(50% - 4px);
+            font-size: 12px;
+            padding: 6px 4px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            background: #1f2937;
+            color: #e5e7eb;
+            transition: background 0.2s;
+        }
+
+        .tool-buttons button:hover {
+            background: #374151;
+        }
+
+        .tool-buttons button.active {
+            background: #10b981;
+            color: #022c22;
+            font-weight: 700;
+            box-shadow: 0 0 5px rgba(16, 185, 129, 0.5);
+        }
+        
+        /* Special Colors for Select/Delete */
+        .tool-buttons button[data-tool="select"] { background: #6366f1; color: #fff; }
+        .tool-buttons button[data-tool="select"].active { background: #4f46e5; box-shadow: 0 0 8px #6366f1; }
+
+        .panel-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            margin-top: 4px;
+        }
+
+        .panel-row label {
+            color: #9ca3af;
+            width: 60px;
+        }
+
+        .panel-row input[type="range"] {
+            flex: 1;
+            margin-left: 6px;
+        }
+
+        .panel-row input[type="number"] {
+            flex: 1;
+            margin-left: 6px;
+            background: #020617;
+            color: #e5e7eb;
+            border: 1px solid #374151;
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        .panel-row select {
+            flex: 1;
+            margin-left: 6px;
+            width: 100%;
+            font-size: 11px;
+            background: #020617;
+            color: #e5e7eb;
+            border: 1px solid #374151;
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        /* Color Buttons specific styling */
+        .pipe-color-buttons {
+            display: flex;
+            gap: 4px;
+            margin-top: 4px;
+        }
+
+        .pipe-color-buttons button {
+            flex: 1;
+            font-size: 11px;
+            padding: 6px 0;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            background: #1f2937;
+            color: #e5e7eb;
+        }
+        
+        /* Blue Active */
+        .pipe-color-buttons button[data-pipe-color="blue"].active {
+            background: #2563eb;
+            color: #ffffff;
+            font-weight: 700;
+            box-shadow: 0 0 5px #2563eb;
+        }
+        
+        /* Red Active */
+        .pipe-color-buttons button[data-pipe-color="red"].active {
+            background: #dc2626;
+            color: #ffffff;
+            font-weight: 700;
+            box-shadow: 0 0 5px #dc2626;
+        }
+
+        .info-text {
+            font-size: 11px;
+            color: #9ca3af;
+            margin-top: 6px;
+            line-height: 1.4;
+            background: #1f2937;
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        .status-bar {
+            margin-top: auto;
+            padding: 8px;
+            background: #1f2937;
+            border-top: 1px solid #374151;
+            font-size: 12px;
+            color: #e5e7eb;
+        }
+
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 8px;
+            gap: 8px;
+            background: #374151;
+        }
+
+        .canvas-container {
+            flex: 1;
+            background: #111827;
+            border-radius: 8px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .canvas-scroller {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            position: relative;
+        }
+
+        canvas {
+            background: #ffffff;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            cursor: crosshair;
+        }
+
+        canvas.grabbing {
+            cursor: grabbing;
+        }
+
+        canvas.select-mode {
+            cursor: default;
+        }
+
+        .footer-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: #9ca3af;
+            padding: 4px 8px 0;
+            background: #111827;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        .btn-row button {
+            flex: 1;
+            font-size: 11px;
+            padding: 5px 6px;
+            border-radius: 4px;
+            border: 1px solid #4b5563;
+            background: #374151;
+            color: #e5e7eb;
+            cursor: pointer;
+        }
+
+        .btn-row button:hover {
+            background: #4b5563;
+        }
+
+        .btn-row button.danger {
+            background: #7f1d1d;
+            border-color: #991b1b;
+        }
+
+        .btn-row button.primary {
+            background: #1d4ed8;
+            border-color: #1e40af;
+        }
+        
+        .btn-row button.warning {
+            background: #d97706;
+            border-color: #b45309;
+            color: #fff;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .zoom-slider-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        .zoom-slider-row input {
+            flex: 1;
+        }
+
+        .zoom-slider-row span {
+            font-size: 11px;
+            color: #e5e7eb;
+            width: 42px;
+            text-align: right;
+        }
+        
+        /* Attribute Wizard Panel */
+        #seqEditStatus {
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>配管図ツール v3.2</h1>
+                <div class="top-actions">
+                    <button id="saveJsonBtn" class="primary">データ保存</button>
+                    <button id="loadJsonBtn">データ読込</button>
+                    <input type="file" id="fileInput" accept=".json" />
+                </div>
+                <div class="mode-tabs">
+                    <button id="tabDrawing" class="mode-tab active">作図モード</button>
+                    <button id="tabLabel" class="mode-tab label-mode">ラベルモード</button>
+                </div>
+            </div>
+
+            <div class="sidebar-content">
+                
+                <div id="panelDrawing">
+                    <div class="toolbar-group">
+                        <div class="toolbar-title">① 基本ツール</div>
+                        <div class="tool-buttons">
+                            <button data-tool="select" class="active">選択</button>
+                            <button data-tool="edit">移動</button>
+                            <button id="flipBtn">反転</button>
+                            <button id="deleteSelectedBtn" class="danger">選択削除</button>
+                        </div>
+                        <div class="btn-row" style="margin-top:4px;">
+                            <button id="undoBtn">一つ戻る</button>
+                            <button id="redoBtn">一つ進む</button>
+                            <button id="clearBtn" class="danger">全消去</button>
+                        </div>
+                    </div>
+
+                    <div class="toolbar-group" id="pipeColorGroup">
+                        <div class="toolbar-title">② 色 / 種別</div>
+                        <div class="pipe-color-buttons">
+                            <button data-pipe-color="blue" class="active">既設（青）</button>
+                            <button data-pipe-color="red">布設（赤）</button>
+                        </div>
+                    </div>
+
+                    <div class="toolbar-group">
+                        <div class="toolbar-title">③ 作図ツール</div>
+                        <div class="tool-buttons">
+                            <button data-tool="pipe">直管</button>
+                            <button data-tool="socket">ソケット</button>
+                            <button data-tool="elbow">エルボ</button>
+                            <button data-tool="cheese">チーズ</button>
+                            <button data-tool="mcUnion">MCユニオン</button>
+                            <button data-tool="meter">量水器</button>
+                            <button data-tool="hojoValve">補助バルブ</button>
+                            <button data-tool="fixedCustom">エラス・シモク</button>
+                            <button data-tool="text">テキスト</button>
+                        </div>
+                        <div class="info-text">
+                            ※ 移動：図形クリックで一体移動。<br>
+                            ※ ノード吸着で結合します。
+                        </div>
+                    </div>
+
+                    <div class="toolbar-group" id="socketSizeGroup" style="display:none;">
+                        <div class="toolbar-title">サイズ調整 (ソケット)</div>
+                        <div class="panel-row">
+                            <label>倍率</label>
+                            <input type="range" id="socketSize" min="25" max="150" value="50" />
+                            <span id="socketSizeLabel">50%</span>
+                        </div>
+                    </div>
+                    <div class="toolbar-group" id="elbowSizeGroup" style="display:none;">
+                        <div class="toolbar-title">サイズ調整 (エルボ)</div>
+                        <div class="panel-row">
+                            <label>倍率</label>
+                            <input type="range" id="elbowSize" min="40" max="140" value="100" />
+                            <span id="elbowSizeLabel">100%</span>
+                        </div>
+                    </div>
+
+                    <div class="toolbar-group">
+                        <div class="toolbar-title">④ 表示 / ズーム</div>
+                        <div class="zoom-slider-row">
+                            <button id="zoomOutBtn">−</button>
+                            <input type="range" id="zoomSlider" min="0.5" max="3" step="0.1" value="0.8" />
+                            <button id="zoomInBtn">＋</button>
+                            <span id="zoomLabel">80%</span>
+                        </div>
+                        <div class="btn-row">
+                            <button id="zoomResetBtn">リセット</button>
+                            <button id="toggleGridBtn" class="active">グリッド ON/OFF</button>
+                        </div>
+                        <div class="btn-row">
+                            <button id="saveJpgBtn">画像保存 (JPG)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="panelLabel" style="display:none;">
+                    <div class="toolbar-group">
+                        <div class="toolbar-title">① 基本ツール</div>
+                        <div class="tool-buttons">
+                            <button data-tool-label="select" class="active">選択</button>
+                            <button data-tool-label="edit">移動</button>
+                        </div>
+                    </div>
+
+                    <div class="toolbar-group highlight">
+                        <div class="toolbar-title">② ラベル連続編集</div>
+                        <div id="seqEditStatus">準備中...</div>
+                        
+                        <div id="labelPropContainer" style="margin-bottom:8px;">
+                            <div id="propPlaceholder" class="info-text">対象を選択中...</div>
+                        </div>
+
+                        <div class="btn-row">
+                            <button id="seqEditNextBtn" class="primary">次へ (確定)</button>
+                            <button id="seqEditSkipBtn">スキップ</button>
+                        </div>
+                        <div class="btn-row">
+                            <button id="seqEditFinishBtn" class="warning">編集完了 (自動配置)</button>
+                        </div>
+                    </div>
+                    
+                    <div class="toolbar-group">
+                        <div class="toolbar-title">③ 表示 / ズーム</div>
+                        <div class="zoom-slider-row">
+                            <button id="zoomOutBtnLabel">−</button>
+                            <input type="range" id="zoomSliderLabel" min="0.5" max="3" step="0.1" value="0.8" />
+                            <button id="zoomInBtnLabel">＋</button>
+                            <span id="zoomLabelLabel">80%</span>
+                        </div>
+                        <div class="btn-row">
+                             <button id="zoomResetBtnLabel">リセット</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div> <div class="status-bar">
+                <span id="statusText">作図モード: ツールを選択してください。</span>
+            </div>
+        </div>
+
+        <div class="main">
+            <div class="canvas-container">
+                <div class="canvas-scroller">
+                    <canvas id="drawingCanvas" width="1200" height="800"></canvas>
+                </div>
+                <div class="footer-bar">
+                    <div class="legend">
+                        <span>● ノード</span>
+                        <span>━ 直管</span>
+                        <span>┗┓ エルボ</span>
+                        <span>═ ソケット</span>
+                        <span>╋ MC</span>
+                        <span>┻ チーズ</span>
+                        <span>[M] 量水器</span>
+                    </div>
+                    <div>Esc:キャンセル / F:回転 / Space+Drag:パン</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="hiddenPropTemplates" style="display:none;">
+        <div id="fittingProps">
+            <div class="panel-row" id="rowPropType">
+                <label>管種</label>
+                <select id="propType">
+                    <option value="HI">HI</option>
+                    <option value="VLP-VB">VLP-VB</option>
+                    <option value="VD">VD</option>
+                </select>
+            </div>
+            <div class="panel-row">
+                <label>サイズ1</label>
+                <select id="propSize1"></select>
+            </div>
+            <div class="panel-row">
+                <label>サイズ2</label>
+                <select id="propSize2"></select>
+            </div>
+        </div>
+
+        <div id="pipeProps">
+            <div class="panel-row">
+                <label>長さ(mm)</label>
+                <input type="number" id="propLength" placeholder="数値を入力" />
+            </div>
+            <div class="info-text">※ 数値なしの場合非表示</div>
+        </div>
+
+        <div id="labelProps">
+            <div class="panel-row">
+                <label>文字サイズ</label>
+                <select id="propFontSize">
+                    <option value="10">10px</option>
+                    <option value="12">12px</option>
+                    <option value="14">14px</option>
+                    <option value="16">16px</option>
+                    <option value="18">18px</option>
+                    <option value="20">20px</option>
+                    <option value="24">24px</option>
+                    <option value="32">32px</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ---------------------------------------------------------
+        // 定数・定義
+        // ---------------------------------------------------------
+        const SOCKET_BASE_HALF_GAP = 40;
+        const METER_IN = { x: -20, y: 0 };
+        const METER_OUT = { x: 50, y: 0 };
+        const METER_ANCHOR_DIST = 70;
+        const ELBOW_IN = { x: -45, y: 0 };
+        const ELBOW_PIVOT = { x: 0, y: 0 };
+        const ELBOW_OUT = { x: 0, y: 45 };
+
+        const METER_ITEMS = [
+            { kind: "text", x: 0, y: 0, text: "M", size: 100 },
+            { kind: "rect", x: -20, y: -20, w: 40, h: 40 },
+            { kind: "line", x1: 20, y1: 0, x2: 50, y2: 0 },
+            { kind: "line", x1: 35, y1: -15, x2: 35, y2: 15 },
+        ];
+
+        const ELBOW_ITEMS = [
+            { kind: "line", x1: 0, y1: 0, x2: -25, y2: 0 },
+            { kind: "line", x1: 0, y1: 0, x2: 0, y2: 25 },
+            { kind: "line", x1: -25, y1: -20, x2: -25, y2: 20 },
+            { kind: "line", x1: -25, y1: 20, x2: -45, y2: 20 },
+            { kind: "line", x1: -25, y1: -20, x2: -45, y2: -20 },
+            { kind: "line", x1: -20, y1: 25, x2: 20, y2: 25 },
+            { kind: "line", x1: -20, y1: 25, x2: -20, y2: 45 },
+            { kind: "line", x1: 20, y1: 25, x2: 20, y2: 45 }
+        ];
+        const ELBOW_X_ITEMS = [ELBOW_ITEMS[0], ELBOW_ITEMS[2], ELBOW_ITEMS[3], ELBOW_ITEMS[4]];
+        const ELBOW_Y_ITEMS = [ELBOW_ITEMS[1], ELBOW_ITEMS[5], ELBOW_ITEMS[6], ELBOW_ITEMS[7]];
+
+        const NAME_MAP = {
+            "socket": "HIソケット φ13",
+            "elbow": "HIエルボ φ13",
+            "cheese": "HIチーズ φ13",
+            "mcUnion": "MCユニオン φ13",
+            "meter": "メーター器",
+            "hojoValve": "逆止弁付補助バルブ φ13",
+            "fixedCustom": "メーター用エラスジョイント φ13",
+        };
+        const BASE_NAMES = {
+            "socket": "ソケット",
+            "elbow": "エルボ",
+            "cheese": "チーズ",
+            "mcUnion": "MCユニオン",
+            "hojoValve": "逆止弁付補助バルブ",
+            "fixedCustom": "メーター用エラス",
+            "meter": "メーター器"
+        };
+
+        const PIPE_TYPES = ["HI", "VLP-VB", "VD"];
+        const SIZES_HI = ["13", "16", "20", "25", "40", "50", "100", "150"];
+        const SIZES_OTHERS = ["15", "20", "25", "40", "50", "100", "150"];
+
+        let socketScale = 1.0;
+        let elbowScale = 1.0;
+
+        function genId() { return "s_" + Date.now() + "_" + Math.floor(Math.random() * 10000); }
+        function rot2(angle) { return { c: Math.cos(angle), s: Math.sin(angle) }; }
+        function canonicalAngle(angle) {
+            if (angle > Math.PI / 2) angle -= Math.PI;
+            else if (angle <= -Math.PI / 2) angle += Math.PI;
+            return angle;
+        }
+        function getStrokeColor(type) { return type === "red" ? "#dc2626" : "#2563eb"; }
+
+        function getShapeRadius(type) {
+            switch (type) {
+                case "socket": return 20;
+                case "cheese": return 25;
+                case "mcUnion": return 25;
+                case "hojoValve": return 20;
+                case "fixedCustom": return 20;
+                case "elbow": return 15;
+                case "pipe": return 0;
+                default: return 20;
+            }
+        }
+
+        // ---------------------------------------------------------
+        // 描画関数群
+        // ---------------------------------------------------------
+        function drawLabelShape(ctx, s, isSelected) {
+            if (!s.text) return;
+
+            ctx.save();
+            const fontSize = s.propFontSize || 20;
+            ctx.font = `${fontSize}px system-ui`;
+
+            ctx.textBaseline = "bottom";
+            ctx.textAlign = "left";
+            const textWidth = ctx.measureText(s.text).width;
+
+            const tx = s.x;
+            const ty = s.y;
+            const txT = s.targetX;
+            const tyT = s.targetY;
+
+            ctx.strokeStyle = isSelected ? "#ec4899" : "#111827";
+            ctx.fillStyle = isSelected ? "#ec4899" : "#111827";
+            ctx.lineWidth = isSelected ? 2 : 1;
+
+            ctx.fillText(s.text, tx, ty);
+
+            // 引出し線
+            if (s.targetType !== 'pipe') {
+                ctx.beginPath();
+                ctx.moveTo(tx, ty + 2);
+                ctx.lineTo(tx + textWidth, ty + 2);
+                ctx.stroke();
+            }
+
+            if (s.targetType !== 'pipe' && s.targetType !== undefined) {
+                const textCenter = tx + textWidth / 2;
+                let startX = (txT < textCenter) ? tx : tx + textWidth;
+                const startY = ty + 2;
+
+                const shapeRad = getShapeRadius(s.targetType || "socket");
+                const offset = shapeRad + 5;
+                const dx = txT - startX;
+                const dy = tyT - startY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist > offset) {
+                    const angle = Math.atan2(dy, dx);
+                    const endX = txT - Math.cos(angle) * offset;
+                    const endY = tyT - Math.sin(angle) * offset;
+
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(endX, endY);
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.arc(endX, endY, 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            ctx.restore();
+        }
+
+        function drawSocketBetweenNodes(ctx, n1, n2, colorType, flipped) {
+            const col = getStrokeColor(colorType);
+            const dx = n2.x - n1.x, dy = n2.y - n1.y;
+            const cx = (n1.x + n2.x) / 2, cy = (n1.y + n2.y) / 2;
+            const angle = canonicalAngle(Math.atan2(dy, dx));
+            const s = socketScale;
+            ctx.save(); ctx.translate(cx, cy); ctx.rotate(angle); ctx.scale(flipped ? -1 : 1, 1);
+            ctx.strokeStyle = col; ctx.lineWidth = 2;
+            function line(x1, y1, x2, y2) { ctx.beginPath(); ctx.moveTo(x1 * s, y1 * s); ctx.lineTo(x2 * s, y2 * s); ctx.stroke(); }
+            line(-20, 0, 20, 0); line(20, 0, 20, -20); line(20, -20, 30, -20); line(20, 0, 20, 20);
+            line(20, 20, 35, 20); line(35, 20, 40, 20); line(30, -20, 40, -20);
+            line(-20, -20, -20, 20); line(-20, 20, -40, 20); line(-20, -20, -40, -20);
+            ctx.restore();
+        }
+
+        function drawCheese(ctx, nA, nB, nC, colorType, flipped) {
+            // Draw standard socket between A and B
+            drawSocketBetweenNodes(ctx, nA, nB, colorType, flipped);
+
+            if (!nC) return;
+
+            const cx = (nA.x + nB.x) / 2;
+            const cy = (nA.y + nB.y) / 2;
+            
+            // Draw Elbow Y-part branching to C
+            // Base orientation is determined by vector Center -> C
+            const dx = nC.x - cx;
+            const dy = nC.y - cy;
+            const branchAngle = Math.atan2(dy, dx);
+            
+            // Elbow parts are defined with "Out" at +Y (90deg).
+            // We need to rotate them so the output matches branchAngle.
+            const rotation = branchAngle - Math.PI / 2;
+            const col = getStrokeColor(colorType);
+            const s = elbowScale; // Use elbow scale for the branch part
+
+            ctx.save();
+            ctx.strokeStyle = col; 
+            ctx.lineWidth = 2;
+            ctx.translate(cx, cy);
+            ctx.rotate(rotation);
+            
+            const items = ELBOW_Y_ITEMS;
+            for (const it of items) {
+                ctx.beginPath();
+                ctx.moveTo(it.x1 * s, it.y1 * s);
+                ctx.lineTo(it.x2 * s, it.y2 * s);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function drawMcUnionBetweenNodes(ctx, n1, n2, colorType, flipped) {
+            const col = getStrokeColor(colorType);
+            const dx = n2.x - n1.x, dy = n2.y - n1.y;
+            const cx = (n1.x + n2.x) / 2, cy = (n1.y + n2.y) / 2;
+            const angle = canonicalAngle(Math.atan2(dy, dx));
+            ctx.save(); ctx.translate(cx, cy); ctx.rotate(angle); ctx.scale(flipped ? -1 : 1, 1);
+            ctx.strokeStyle = col; ctx.lineWidth = 2;
+            function line(x1, y1, x2, y2) { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+            line(-25, -10, 25, -10); line(-25, 10, 25, 10); line(25, -20, 35, -20); line(35, -20, 35, 20);
+            line(35, 20, 25, 20); line(-25, -20, -35, -20); line(-35, -20, -35, 20); line(-35, 20, -25, 20);
+            ctx.restore();
+        }
+
+        function drawMeterBetweenNodes(ctx, n1, n2, flipped) {
+            const dx = n2.x - n1.x, dy = n2.y - n1.y;
+            const angle = Math.atan2(dy, dx);
+            const distToCenter = flipped ? 50 : 20;
+            const cx = n1.x + Math.cos(angle) * distToCenter;
+            const cy = n1.y + Math.sin(angle) * distToCenter;
+
+            ctx.save(); ctx.translate(cx, cy); ctx.rotate(angle);
+            if (flipped) ctx.scale(-1, 1);
+
+            let textRot = 0;
+            if (Math.abs(angle) > Math.PI / 2) textRot = Math.PI;
+
+            for (const item of METER_ITEMS) {
+                if (item.kind === "rect") {
+                    ctx.strokeStyle = "#2563eb"; ctx.lineWidth = 2; ctx.strokeRect(item.x, item.y, item.w, item.h);
+                } else if (item.kind === "line") {
+                    ctx.strokeStyle = "#2563eb"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(item.x1, item.y1); ctx.lineTo(item.x2, item.y2); ctx.stroke();
+                } else if (item.kind === "text") {
+                    ctx.save(); ctx.translate(item.x, item.y);
+                    if (flipped) ctx.scale(-1, 1);
+                    ctx.rotate(textRot); ctx.fillStyle = "#000000"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.font = (item.size * 0.4) + "px system-ui"; ctx.fillText(item.text, 0, 0); ctx.restore();
+                }
+            }
+            ctx.restore();
+        }
+
+        function drawHojoValveAt(ctx, x, y, angle, colorType, flipped) {
+            ctx.save(); ctx.translate(x, y); ctx.rotate(angle); ctx.scale(flipped ? -1 : 1, 1);
+            ctx.strokeStyle = getStrokeColor(colorType); ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, -20); ctx.lineTo(0, -40); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-10, -40); ctx.lineTo(10, -40); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(40, 0); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(30, -15); ctx.lineTo(30, 15); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-20, 0); ctx.lineTo(-40, 0); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-30, -15); ctx.lineTo(-30, 15); ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawFixedCustomAt(ctx, x, y, angle, colorType, isRotated180) {
+            ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
+            if (isRotated180) ctx.rotate(Math.PI);
+            ctx.strokeStyle = getStrokeColor(colorType); ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(15, -20); ctx.lineTo(15, 20); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(15, 20); ctx.lineTo(35, 20); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(15, -20); ctx.lineTo(35, -20); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-25, 0); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-25, 0); ctx.lineTo(-30, 0); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-30, 0); ctx.lineTo(-35, 0); ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawElbowAt(ctx, nodeA, base, branch, colorType) {
+            const col = getStrokeColor(colorType);
+            const s = elbowScale;
+            const Rb = rot2(base), Rbr = rot2(branch);
+            const pvx = (ELBOW_PIVOT.x - ELBOW_IN.x) * s, pvy = (ELBOW_PIVOT.y - ELBOW_IN.y) * s;
+            const pvxW = nodeA.x + pvx * Rb.c - pvy * Rb.s, pvyW = nodeA.y + pvx * Rb.s + pvy * Rb.c;
+            ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = 2;
+            function drawItems(items, rot) {
+                for (const it of items) {
+                    const x1l = it.x1 * s, y1l = it.y1 * s, x2l = it.x2 * s, y2l = it.y2 * s;
+                    const originX = (items === ELBOW_X_ITEMS) ? ELBOW_IN.x * s : ELBOW_PIVOT.x * s;
+                    const originY = (items === ELBOW_X_ITEMS) ? ELBOW_IN.y * s : ELBOW_PIVOT.y * s;
+                    const rx1 = x1l - originX, ry1 = y1l - originY, rx2 = x2l - originX, ry2 = y2l - originY;
+                    const baseX = (items === ELBOW_X_ITEMS) ? nodeA.x : pvxW;
+                    const baseY = (items === ELBOW_X_ITEMS) ? nodeA.y : pvyW;
+                    const wx1 = baseX + rx1 * rot.c - ry1 * rot.s, wy1 = baseY + rx1 * rot.s + ry1 * rot.c;
+                    const wx2 = baseX + rx2 * rot.c - ry2 * rot.s, wy2 = baseY + rx2 * rot.s + ry2 * rot.c;
+                    ctx.beginPath(); ctx.moveTo(wx1, wy1); ctx.lineTo(wx2, wy2); ctx.stroke();
+                }
+            }
+            drawItems(ELBOW_X_ITEMS, Rb);
+            drawItems(ELBOW_Y_ITEMS, Rbr);
+            ctx.restore();
+        }
+
+        function computeElbowOutNodePos(nodeA, base, branch) {
+            const s = elbowScale;
+            const Rb = rot2(base), Rbr = rot2(branch);
+            const pvx = (ELBOW_PIVOT.x - ELBOW_IN.x) * s, pvy = (ELBOW_PIVOT.y - ELBOW_IN.y) * s;
+            const pvxW = nodeA.x + pvx * Rb.c - pvy * Rb.s, pvyW = nodeA.y + pvx * Rb.s + pvy * Rb.c;
+            const ox = (ELBOW_OUT.x - ELBOW_PIVOT.x) * s, oy = (ELBOW_OUT.y - ELBOW_PIVOT.y) * s;
+            return { x: pvxW + ox * Rbr.c - oy * Rbr.s, y: pvyW + ox * Rbr.s + oy * Rbr.c };
+        }
+
+        // ---------------------------------------------------------
+        // 状態変数
+        // ---------------------------------------------------------
+        const canvas = document.getElementById("drawingCanvas");
+        const ctx = canvas.getContext("2d");
+        const statusText = document.getElementById("statusText");
+        
+        // Mode Tabs
+        const tabDrawing = document.getElementById("tabDrawing");
+        const tabLabel = document.getElementById("tabLabel");
+        const panelDrawing = document.getElementById("panelDrawing");
+        const panelLabel = document.getElementById("panelLabel");
+
+        // Tools
+        const toolButtons = document.querySelectorAll("button[data-tool]"); // Drawing mode tools
+        const labelToolButtons = document.querySelectorAll("button[data-tool-label]"); // Label mode tools
+        const pipeColorButtons = document.querySelectorAll("button[data-pipe-color]");
+
+        const undoBtn = document.getElementById("undoBtn");
+        const redoBtn = document.getElementById("redoBtn");
+        const clearBtn = document.getElementById("clearBtn");
+        const saveJpgBtn = document.getElementById("saveJpgBtn");
+        const saveJsonBtn = document.getElementById("saveJsonBtn");
+        const loadJsonBtn = document.getElementById("loadJsonBtn");
+        const fileInput = document.getElementById("fileInput");
+        const deleteSelectedBtn = document.getElementById("deleteSelectedBtn");
+        const flipBtn = document.getElementById("flipBtn");
+        const toggleGridBtn = document.getElementById("toggleGridBtn");
+
+        const socketSizeInput = document.getElementById("socketSize");
+        const socketSizeLabel = document.getElementById("socketSizeLabel");
+        const elbowSizeInput = document.getElementById("elbowSize");
+        const elbowSizeLabel = document.getElementById("elbowSizeLabel");
+        
+        // Zoom Controls (Drawing)
+        const zoomSlider = document.getElementById("zoomSlider");
+        const zoomLabel = document.getElementById("zoomLabel");
+        const zoomInBtn = document.getElementById("zoomInBtn");
+        const zoomOutBtn = document.getElementById("zoomOutBtn");
+        const zoomResetBtn = document.getElementById("zoomResetBtn");
+        
+        // Zoom Controls (Label) - Synchronized
+        const zoomSliderLabel = document.getElementById("zoomSliderLabel");
+        const zoomLabelLabel = document.getElementById("zoomLabelLabel");
+        const zoomInBtnLabel = document.getElementById("zoomInBtnLabel");
+        const zoomOutBtnLabel = document.getElementById("zoomOutBtnLabel");
+        const zoomResetBtnLabel = document.getElementById("zoomResetBtnLabel");
+
+        // Property Elements
+        const labelPropContainer = document.getElementById("labelPropContainer");
+        const propPlaceholder = document.getElementById("propPlaceholder");
+        const hiddenPropTemplates = document.getElementById("hiddenPropTemplates");
+        
+        const fittingProps = document.getElementById("fittingProps");
+        const pipeProps = document.getElementById("pipeProps");
+        const labelProps = document.getElementById("labelProps");
+        
+        const propType = document.getElementById("propType");
+        const rowPropType = document.getElementById("rowPropType");
+        const propSize1 = document.getElementById("propSize1");
+        const propSize2 = document.getElementById("propSize2");
+        const propLength = document.getElementById("propLength");
+        const propFontSize = document.getElementById("propFontSize");
+
+        // Label Wizard Mode Variables
+        const seqEditStatus = document.getElementById("seqEditStatus");
+        const seqEditNextBtn = document.getElementById("seqEditNextBtn");
+        const seqEditSkipBtn = document.getElementById("seqEditSkipBtn");
+        const seqEditFinishBtn = document.getElementById("seqEditFinishBtn");
+
+        // State
+        let currentMode = "drawing"; // "drawing" or "label"
+        let currentTool = "select"; // Shared tool concept (mapped from buttons)
+        let nodes = [];
+        let shapes = [];
+        let nextNodeId = 1;
+        let selectedShape = null;
+        
+        let undoStack = [];
+        let redoStack = [];
+
+        let tempStartNode = null;
+        let tempCheeseNodeB = null; // New state for Cheese (2nd click)
+        let tempEndPos = null;
+        let isPreviewFlipped = false;
+        let elbowPreviewAngle = 0;
+
+        let zoom = 0.8;
+        let panX = 0;
+        let panY = 0;
+        let isPanning = false;
+        let isSpaceDown = false;
+        let panStart = { x: 0, y: 0 };
+        let draggingGroup = null;
+        let draggingLabel = null;
+        let snapIndicator = null;
+        let isExporting = false;
+
+        // Label Wizard State
+        let seqEditList = [];
+        let seqEditIndex = 0;
+
+        const NODE_HIT_RADIUS = 10;
+        const CLICK_TOLERANCE = 10;
+        const ANGLE_STEP = Math.PI / 4;
+        const ELBOW_ANGLE_STEP = Math.PI / 4;
+        const SNAP_DIST = 20;
+
+        // ---------------------------------------------------------
+        // Initialization & Helpers
+        // ---------------------------------------------------------
+        function updateSizeOptions(selectEl, type) {
+            selectEl.innerHTML = "";
+            if (type === "HI") {
+                SIZES_HI.forEach(s => {
+                    const opt = document.createElement("option");
+                    opt.value = s; opt.textContent = "Φ" + s; selectEl.appendChild(opt);
+                });
+            } else {
+                SIZES_OTHERS.forEach(s => {
+                    const opt = document.createElement("option");
+                    opt.value = s; opt.textContent = s + "A"; selectEl.appendChild(opt);
+                });
+            }
+        }
+        function initPropertyPanel() {
+            updateSizeOptions(propSize1, "HI");
+            updateSizeOptions(propSize2, "HI");
+            const opt = document.createElement("option");
+            opt.value = ""; opt.textContent = "なし";
+            propSize2.insertBefore(opt, propSize2.firstChild);
+            propSize2.value = "";
+        }
+        initPropertyPanel();
+
+        function pushHistory() {
+            undoStack.push({
+                nodes: JSON.parse(JSON.stringify(nodes)),
+                shapes: JSON.parse(JSON.stringify(shapes)),
+                nextNodeId,
+            });
+            redoStack = []; // Clear redo on new action
+            if (undoStack.length > 50) undoStack.shift();
+        }
+
+        // ---------------------------------------------------------
+        // Mode Switching
+        // ---------------------------------------------------------
+        function setMode(mode) {
+            currentMode = mode;
+            selectedShape = null;
+            tempStartNode = null;
+            tempCheeseNodeB = null;
+            tempEndPos = null;
+            
+            // Clean orphan nodes
+            cleanupOrphanNodes();
+
+            if (mode === "drawing") {
+                tabDrawing.classList.add("active");
+                tabLabel.classList.remove("active");
+                panelDrawing.style.display = "block";
+                panelLabel.style.display = "none";
+                statusText.textContent = "作図モード: ツールを選択してください。";
+                
+                endSeqEditing(false);
+                activateTool("select");
+            } else {
+                tabDrawing.classList.remove("active");
+                tabLabel.classList.add("active");
+                panelDrawing.style.display = "none";
+                panelLabel.style.display = "block";
+                statusText.textContent = "ラベルモード: 連続編集を開始します。";
+                
+                startSeqEditing();
+                activateTool("select");
+            }
+            redrawAll();
+        }
+
+        tabDrawing.addEventListener("click", () => setMode("drawing"));
+        tabLabel.addEventListener("click", () => setMode("label"));
+
+        function activateTool(toolName) {
+            currentTool = toolName;
+            
+            toolButtons.forEach(b => {
+                if (b.getAttribute("data-tool") === toolName) b.classList.add("active");
+                else b.classList.remove("active");
+            });
+            labelToolButtons.forEach(b => {
+                if (b.getAttribute("data-tool-label") === toolName) b.classList.add("active");
+                else b.classList.remove("active");
+            });
+
+            const sockPanel = document.getElementById("socketSizeGroup");
+            const elbPanel = document.getElementById("elbowSizeGroup");
+            if (sockPanel) sockPanel.style.display = (toolName === "socket") ? "block" : "none";
+            if (elbPanel) elbPanel.style.display = (toolName === "elbow" || toolName === "cheese") ? "block" : "none";
+            
+            canvas.classList.toggle("select-mode", toolName === "select");
+            
+            // Reset Temp states
+            tempStartNode = null;
+            tempCheeseNodeB = null;
+            tempEndPos = null;
+        }
+
+        toolButtons.forEach(btn => btn.addEventListener("click", () => activateTool(btn.getAttribute("data-tool"))));
+        labelToolButtons.forEach(btn => btn.addEventListener("click", () => activateTool(btn.getAttribute("data-tool-label"))));
+
+        // ---------------------------------------------------------
+        // Label Wizard Logic
+        // ---------------------------------------------------------
+        function startSeqEditing() {
+            seqEditList = shapes.filter(s => 
+                ["pipe", "socket", "elbow", "cheese", "mcUnion", "meter", "hojoValve", "fixedCustom"].includes(s.type)
+            ).sort((a, b) => a.id.localeCompare(b.id));
+
+            if (seqEditList.length === 0) {
+                seqEditStatus.textContent = "編集対象の図形がありません。";
+                labelPropContainer.innerHTML = "";
+                labelPropContainer.appendChild(propPlaceholder);
+                return;
+            }
+
+            seqEditIndex = 0;
+            updateSeqEditView();
+        }
+
+        function updateSeqEditView() {
+            if (seqEditIndex >= seqEditList.length) {
+                if (confirm("全ての編集が終わりました。ラベルを一括配置しますか？")) {
+                    executeAutoLabel();
+                }
+                seqEditStatus.textContent = "編集完了";
+                selectedShape = null;
+                labelPropContainer.innerHTML = "";
+                labelPropContainer.appendChild(propPlaceholder);
+                
+                hiddenPropTemplates.appendChild(fittingProps);
+                hiddenPropTemplates.appendChild(pipeProps);
+                hiddenPropTemplates.appendChild(labelProps);
+                
+                redrawAll();
+                return;
+            }
+
+            const target = seqEditList[seqEditIndex];
+            selectedShape = target;
+
+            seqEditStatus.textContent = `編集 ${seqEditIndex + 1} / ${seqEditList.length} : ${BASE_NAMES[target.type] || target.type}`;
+            showPropertiesInLabelPanel(target);
+            redrawAll();
+        }
+
+        function nextSeqEdit() {
+            seqEditIndex++;
+            updateSeqEditView();
+        }
+
+        function endSeqEditing(askToLabel = false) {
+            hiddenPropTemplates.appendChild(fittingProps);
+            hiddenPropTemplates.appendChild(pipeProps);
+            hiddenPropTemplates.appendChild(labelProps);
+            labelPropContainer.innerHTML = "";
+            labelPropContainer.appendChild(propPlaceholder);
+            seqEditList = [];
+            seqEditIndex = 0;
+            selectedShape = null;
+        }
+
+        seqEditNextBtn.addEventListener("click", () => nextSeqEdit());
+        seqEditSkipBtn.addEventListener("click", () => nextSeqEdit());
+        seqEditFinishBtn.addEventListener("click", () => {
+             if (confirm("編集を終了してラベルを一括配置しますか？")) {
+                executeAutoLabel();
+            }
+            endSeqEditing();
+            redrawAll();
+        });
+
+        function showPropertiesInLabelPanel(s) {
+            hiddenPropTemplates.appendChild(fittingProps);
+            hiddenPropTemplates.appendChild(pipeProps);
+            hiddenPropTemplates.appendChild(labelProps);
+            labelPropContainer.innerHTML = "";
+
+            if (!s) {
+                labelPropContainer.appendChild(propPlaceholder);
+                return;
+            }
+
+            if (s.type === "label") {
+                labelPropContainer.appendChild(labelProps);
+                propFontSize.value = s.propFontSize || "20";
+            } 
+            else if (s.type === "pipe") {
+                labelPropContainer.appendChild(pipeProps);
+                propLength.value = s.propLength || "";
+            } 
+            else if (["socket", "elbow", "cheese", "mcUnion", "hojoValve", "fixedCustom", "meter"].includes(s.type)) {
+                if(s.type === "meter") {
+                   labelPropContainer.innerHTML = "<div class='info-text'>メーター器 (属性なし)</div>";
+                   return;
+                }
+                
+                labelPropContainer.appendChild(fittingProps);
+
+                if (s.type === "hojoValve" || s.type === "fixedCustom") {
+                    rowPropType.style.display = "none";
+                } else {
+                    rowPropType.style.display = "flex";
+                }
+
+                const type = s.propType || "HI"; 
+                propType.value = type;
+                updateSizeOptions(propSize1, type); 
+                updateSizeOptions(propSize2, type);
+                
+                const opt = document.createElement("option"); opt.value = ""; opt.textContent = "なし"; 
+                propSize2.insertBefore(opt, propSize2.firstChild);
+                
+                propSize1.value = s.propSize1 || ((type === "HI") ? "13" : "20"); 
+                propSize2.value = s.propSize2 || "";
+
+                if (!s.propType) { s.propType = propType.value; s.propSize1 = propSize1.value; s.propSize2 = propSize2.value; }
+            }
+        }
+
+        // Property Event Listeners
+        propType.addEventListener("change", () => {
+            if (selectedShape) {
+                pushHistory();
+                selectedShape.propType = propType.value;
+                updateSizeOptions(propSize1, propType.value);
+                updateSizeOptions(propSize2, propType.value);
+                const opt = document.createElement("option"); opt.value = ""; opt.textContent = "なし"; propSize2.insertBefore(opt, propSize2.firstChild);
+                propSize1.value = (propType.value === "HI") ? "13" : "13";
+                if (propType.value !== "HI" && !SIZES_OTHERS.includes("13")) propSize1.value = "20";
+                selectedShape.propSize1 = propSize1.value;
+                selectedShape.propSize2 = "";
+                propSize2.value = "";
+                updateLabelForShape(selectedShape);
+                redrawAll();
+            }
+        });
+        propSize1.addEventListener("change", () => {
+            if (selectedShape) {
+                pushHistory();
+                selectedShape.propSize1 = propSize1.value;
+                updateLabelForShape(selectedShape);
+                redrawAll();
+            }
+        });
+        propSize2.addEventListener("change", () => {
+            if (selectedShape) {
+                pushHistory();
+                selectedShape.propSize2 = propSize2.value;
+                updateLabelForShape(selectedShape);
+                redrawAll();
+            }
+        });
+        propLength.addEventListener("input", () => {
+            if (selectedShape && selectedShape.type === "pipe") {
+                selectedShape.propLength = propLength.value;
+                updateLabelForShape(selectedShape);
+                redrawAll();
+            }
+        });
+        propLength.addEventListener("change", () => { if (selectedShape) pushHistory(); });
+        propFontSize.addEventListener("change", () => { if (selectedShape && selectedShape.type === "label") { pushHistory(); selectedShape.propFontSize = parseInt(propFontSize.value, 10); redrawAll(); } });
+
+
+        // ---------------------------------------------------------
+        // Label Logic
+        // ---------------------------------------------------------
+        function updateLabelForShape(shape) {
+            if (!shape) return;
+            const labels = shapes.filter(s => s.type === "label" && s.targetShapeId === shape.id);
+            labels.forEach(lbl => {
+                if (shape.type === "pipe") {
+                    lbl.text = shape.propLength ? String(shape.propLength) : "";
+                } else {
+                    lbl.text = generateLabelText(shape);
+                }
+            });
+        }
+
+        function generateLabelText(s) {
+            const type = s.propType || "HI";
+            const sz1 = s.propSize1 || ((type === "HI") ? "13" : "20");
+            const sz2 = s.propSize2 || "";
+            let sizeStr = (type === "HI") ? "Φ" + sz1 : sz1 + "A";
+            if (sz2) sizeStr += (type === "HI") ? " x Φ" + sz2 : " x " + sz2 + "A";
+
+            if (s.type === "hojoValve") return BASE_NAMES[s.type] + " " + sizeStr;
+
+            if (s.type === "fixedCustom") {
+                let dynamicName = "メーター用エラス";
+                const neighbors = shapes.filter(other =>
+                    other.id !== s.id && (other.type !== "label") &&
+                    (other.a === s.a || other.a === s.b || other.b === s.a || other.b === s.b)
+                );
+                const hasMeter = neighbors.some(n => n.type === "meter");
+                const hasValve = neighbors.some(n => n.type === "hojoValve");
+                if (hasMeter) dynamicName = "HIシモク";
+                else if (hasValve) dynamicName = "メーター用エラス";
+                return dynamicName + " " + sizeStr;
+            }
+
+            const base = BASE_NAMES[s.type] || s.type;
+            return type + base + " " + sizeStr;
+        }
+
+        function executeAutoLabel() {
+            pushHistory(); let count = 0;
+            shapes.forEach((s, idx) => {
+                if (s.type === "meter" || s.type === "text") return;
+
+                const exists = shapes.some(l => l.type === "label" && l.targetShapeId === s.id);
+                if (exists) return;
+
+                if (s.type === "pipe") {
+                    if (!s.propLength) return;
+                    const nA = getNode(s.a), nB = getNode(s.b);
+                    if (!nA || !nB) return;
+                    const cx = (nA.x + nB.x) / 2, cy = (nA.y + nB.y) / 2;
+                    const text = String(s.propLength);
+                    const estWidth = text.length * 8;
+                    shapes.push({
+                        type: "label", id: genId(),
+                        x: cx - estWidth / 2, y: cy,
+                        targetX: cx, targetY: cy,
+                        text: text, targetType: "pipe", targetShapeId: s.id, propFontSize: 20
+                    });
+                    count++;
+                    return;
+                }
+
+                const name = NAME_MAP[s.type] || BASE_NAMES[s.type];
+                if (name) {
+                    if (!s.propType) { s.propType = "HI"; s.propSize1 = "13"; s.propSize2 = ""; }
+                    let cx, cy;
+                    const nA = getNode(s.a), nB = getNode(s.b);
+                    if (s.type === "elbow") {
+                        const s_scale = elbowScale;
+                        const pvx = (ELBOW_PIVOT.x - ELBOW_IN.x) * s_scale, pvy = (ELBOW_PIVOT.y - ELBOW_IN.y) * s_scale;
+                        const connected = getConnectedPipeAngle(s.a); const base = (s.baseAngle !== undefined) ? s.baseAngle : ((connected !== null) ? connected : 0);
+                        const Rb = rot2(base); cx = nA.x + pvx * Rb.c - pvy * Rb.s; cy = nA.y + pvx * Rb.s + pvy * Rb.c;
+                    } else if (s.type === "cheese" && s.c) {
+                        // Place label near the branch
+                        const nC = getNode(s.c);
+                        if(nC) { cx = (nA.x + nB.x)/2; cy = (nA.y + nB.y)/2; }
+                        else { cx = nA.x; cy = nA.y; }
+                    } else if (nA && nB) { cx = (nA.x + nB.x) / 2; cy = (nA.y + nB.y) / 2; } else if (nA) { cx = nA.x; cy = nA.y; } else return;
+
+                    const text = generateLabelText(s);
+                    const offsetY = (idx % 2 === 0) ? -60 : 60; 
+                    const offsetX = (idx % 3 === 0) ? 20 : -20;
+                    shapes.push({
+                        type: "label", id: genId(),
+                        x: cx + offsetX, y: cy + offsetY,
+                        targetX: cx, targetY: cy,
+                        text: text, targetType: s.type, targetShapeId: s.id, propFontSize: 20
+                    });
+                    count++;
+                }
+            });
+            statusText.textContent = count + "個のラベルを生成しました。";
+        }
+
+
+        // ---------------------------------------------------------
+        // Core Logic (Canvas, Nodes, Undo/Redo)
+        // ---------------------------------------------------------
+        function getCanvasPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            return {
+                x: ((e.clientX - rect.left) * scaleX - panX) / zoom,
+                y: ((e.clientY - rect.top) * scaleY - panY) / zoom
+            };
+        }
+        function findNodeNear(x, y) {
+            const r = NODE_HIT_RADIUS / zoom;
+            return nodes.find(n => (n.x - x) ** 2 + (n.y - y) ** 2 <= r * r) || null;
+        }
+        function createNode(x, y) {
+            const n = { id: nextNodeId++, x, y };
+            nodes.push(n);
+            return n;
+        }
+        function getNode(id) { return nodes.find(n => n.id === id); }
+        function getConnectedPipeAngle(nodeId) {
+            const p = shapes.findLast(s => s.type === "pipe" && (s.a === nodeId || s.b === nodeId));
+            if (!p) return null;
+            const n1 = getNode(p.a), n2 = getNode(p.b);
+            if (!n1 || !n2) return null;
+            return (p.b === nodeId) ? Math.atan2(n2.y - n1.y, n2.x - n1.x) : Math.atan2(n1.y - n2.y, n1.x - n2.x);
+        }
+        function cleanupOrphanNodes() {
+            const used = new Set();
+            shapes.forEach(s => { 
+                if (s.a) used.add(s.a); 
+                if (s.b) used.add(s.b); 
+                if (s.c) used.add(s.c);
+            });
+            nodes = nodes.filter(n => used.has(n.id));
+        }
+        function getColor() { return document.querySelector(".pipe-color-buttons .active").getAttribute("data-pipe-color"); }
+
+        function drawGrid() {
+            if (!toggleGridBtn.classList.contains("active")) return;
+            const step = 40;
+            ctx.save(); ctx.strokeStyle = "#374151"; ctx.lineWidth = 0.5; ctx.setLineDash([2, 4]);
+            const left = -panX / zoom; const top = -panY / zoom;
+            const right = (canvas.width - panX) / zoom; const bottom = (canvas.height - panY) / zoom;
+            const startX = Math.floor(left / step) * step; const startY = Math.floor(top / step) * step;
+            for (let x = startX; x < right; x += step) { ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke(); }
+            for (let y = startY; y < bottom; y += step) { ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(right, y); ctx.stroke(); }
+            ctx.restore();
+        }
+
+        function drawSelectionHalo(s) {
+            if (!s) return;
+            const nA = getNode(s.a), nB = s.b ? getNode(s.b) : null;
+            ctx.save(); ctx.strokeStyle = "rgba(236, 72, 153, 0.4)"; ctx.lineWidth = 12 / zoom; ctx.lineCap = "round"; ctx.beginPath();
+            if (s.type === "label") {
+                const w = ctx.measureText(s.text).width || 50;
+                ctx.strokeRect(s.x - 5, s.y - 15, w + 10, 20);
+                ctx.restore(); return;
+            }
+            if (s.type === "text") ctx.arc(s.x, s.y, 20, 0, Math.PI * 2);
+            else if (s.type === "elbow" && nA) ctx.arc(nA.x, nA.y, 25, 0, Math.PI * 2);
+            else if (nA && nB) {
+                if (s.type === "pipe") { ctx.moveTo(nA.x, nA.y); ctx.lineTo(nB.x, nB.y); }
+                else { const cx = (nA.x + nB.x) / 2, cy = (nA.y + nB.y) / 2; ctx.arc(cx, cy, 20, 0, Math.PI * 2); }
+            }
+            ctx.stroke(); ctx.restore();
+        }
+
+        function drawShapeDispatch(s, isPreview = false) {
+            if (s.type === "label") { drawLabelShape(ctx, s, s === selectedShape); return; }
+            const nA = getNode(s.a) || tempStartNode;
+            
+            // For Cheese, nB might be tempCheeseNodeB if in preview
+            let nB = null;
+            if(s.type === "cheese" && isPreview && tempCheeseNodeB) {
+                 nB = tempCheeseNodeB;
+            } else {
+                 nB = (s.b ? getNode(s.b) : null) || (isPreview ? tempEndPos : null);
+            }
+            
+            if (!nA) return;
+            if (s.type === "text") { ctx.save(); ctx.fillStyle = "#111827"; ctx.font = "14px sans-serif"; ctx.fillText(s.text, s.x, s.y); ctx.restore(); return; }
+            if (s.type === "elbow") {
+                let base = s.baseAngle, branch = s.branchAngle;
+                if (isPreview) {
+                    const connected = getConnectedPipeAngle(nA.id);
+                    base = (connected !== null) ? connected : 0;
+                    branch = elbowPreviewAngle;
+                }
+                if (base == null) base = 0; if (branch == null) branch = base + Math.PI / 2;
+                drawElbowAt(ctx, nA, base, branch, s.color); return;
+            }
+            if (!nB) return;
+            
+            if (s.type === "pipe") { ctx.save(); ctx.strokeStyle = getStrokeColor(s.color); ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(nA.x, nA.y); ctx.lineTo(nB.x, nB.y); ctx.stroke(); ctx.restore(); }
+            else if (s.type === "socket") drawSocketBetweenNodes(ctx, nA, nB, s.color, s.flipped);
+            else if (s.type === "cheese") {
+                const nC = (s.c ? getNode(s.c) : null) || (isPreview && tempEndPos ? tempEndPos : null);
+                drawCheese(ctx, nA, nB, nC, s.color, s.flipped);
+            }
+            else if (s.type === "mcUnion") drawMcUnionBetweenNodes(ctx, nA, nB, s.color, s.flipped);
+            else if (s.type === "meter") drawMeterBetweenNodes(ctx, nA, nB, s.flipped);
+            else if (s.type === "hojoValve") { const cx = (nA.x + nB.x) / 2, cy = (nA.y + nB.y) / 2, a = canonicalAngle(Math.atan2(nB.y - nA.y, nB.x - nA.x)); drawHojoValveAt(ctx, cx, cy, a, s.color, s.flipped); }
+            else if (s.type === "fixedCustom") {
+                let a = canonicalAngle(Math.atan2(nB.y - nA.y, nB.x - nA.x));
+                const cx = (nA.x + nB.x) / 2, cy = (nA.y + nB.y) / 2;
+                drawFixedCustomAt(ctx, cx, cy, a, s.color, s.flipped);
+            }
+        }
+
+        function redrawAll() {
+            ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.setTransform(zoom, 0, 0, zoom, panX, panY);
+
+            if (!isExporting) drawGrid();
+
+            shapes.forEach(s => {
+                if (s === selectedShape && !isExporting) drawSelectionHalo(s);
+                drawShapeDispatch(s);
+            });
+
+            if (!isExporting) {
+                ctx.fillStyle = "#0ea5e9";
+                nodes.forEach(n => { ctx.beginPath(); ctx.arc(n.x, n.y, 3 / zoom, 0, Math.PI * 2); ctx.fill(); });
+            }
+
+            // Preview Logic
+            if (tempStartNode && !isExporting) {
+                if(currentTool === "cheese" && tempCheeseNodeB) {
+                     // Phase 2 of cheese: drawing branch
+                     // tempStartNode is A, tempCheeseNodeB is B, tempEndPos is C (branch tip)
+                     if(tempEndPos) {
+                        ctx.save(); ctx.globalAlpha = 0.6;
+                        const dummy = { type: currentTool, id: "temp_preview", a: tempStartNode.id, b: tempCheeseNodeB.id, c: null, color: getColor(), flipped: isPreviewFlipped };
+                        drawShapeDispatch(dummy, true);
+                        ctx.restore();
+                        // Draw guide line for branch
+                        const cx = (tempStartNode.x + tempCheeseNodeB.x)/2;
+                        const cy = (tempStartNode.y + tempCheeseNodeB.y)/2;
+                        ctx.save(); ctx.strokeStyle = "orange"; ctx.lineWidth = 1; ctx.setLineDash([2, 2]);
+                        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(tempEndPos.x, tempEndPos.y); ctx.stroke();
+                        ctx.restore();
+                     }
+                } else if (tempEndPos) {
+                    ctx.save(); ctx.globalAlpha = 0.6;
+                    const dummy = { type: currentTool, id: "temp_preview", a: tempStartNode.id, b: null, color: getColor(), flipped: isPreviewFlipped };
+                    drawShapeDispatch(dummy, true);
+                    ctx.restore();
+                    ctx.save(); ctx.strokeStyle = "orange"; ctx.lineWidth = 2; ctx.setLineDash([2, 2]);
+                    ctx.beginPath(); ctx.arc(tempEndPos.x, tempEndPos.y, 6 / zoom, 0, Math.PI * 2); ctx.stroke();
+                    ctx.beginPath(); ctx.arc(tempStartNode.x, tempStartNode.y, 2 / zoom, 0, Math.PI * 2); ctx.stroke();
+                    ctx.restore();
+                }
+            }
+            if (snapIndicator && !isExporting) {
+                ctx.save(); ctx.strokeStyle = "#10b981"; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(snapIndicator.x, snapIndicator.y, 8 / zoom, 0, Math.PI * 2); ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        function doFlip() {
+            if (tempStartNode) { isPreviewFlipped = !isPreviewFlipped; redrawAll(); statusText.textContent = "反転しました (決定待ち)"; return; }
+            const t = selectedShape || shapes[shapes.length - 1]; if (!t) return;
+            pushHistory(); if (t.type === "elbow") t.branchAngle += Math.PI; else t.flipped = !t.flipped; redrawAll(); statusText.textContent = "反転しました";
+        }
+
+        // ---------------------------------------------------------
+        // Input Handling
+        // ---------------------------------------------------------
+        window.addEventListener("keydown", e => {
+            if (e.code === "Space") { isSpaceDown = true; canvas.classList.add("grabbing"); }
+            if (e.key === "Escape") { 
+                if (tempStartNode) { 
+                    tempStartNode = null; tempCheeseNodeB = null; tempEndPos = null; 
+                    cleanupOrphanNodes(); redrawAll(); statusText.textContent = "キャンセル"; 
+                } else if (currentTool !== "select") activateTool("select"); 
+            }
+            if ((e.key === "Delete" || e.key === "Backspace") && selectedShape) { 
+                pushHistory(); shapes = shapes.filter(s => s !== selectedShape); selectedShape = null; 
+                cleanupOrphanNodes(); redrawAll(); 
+                // Clear props if displayed
+                labelPropContainer.innerHTML = ""; labelPropContainer.appendChild(propPlaceholder);
+            }
+            if (e.key.toLowerCase() === "f") doFlip();
+            if ((e.ctrlKey || e.metaKey) && e.key === "z") undoBtn.click();
+            if ((e.ctrlKey || e.metaKey) && e.key === "y") redoBtn.click();
+        });
+        window.addEventListener("keyup", e => { if (e.code === "Space") { isSpaceDown = false; canvas.classList.remove("grabbing"); } });
+
+        // Undo / Redo
+        undoBtn.addEventListener("click", () => { 
+            if (undoStack.length) { 
+                redoStack.push({nodes:JSON.parse(JSON.stringify(nodes)), shapes:JSON.parse(JSON.stringify(shapes)), nextNodeId});
+                const s = undoStack.pop(); 
+                nodes = s.nodes; shapes = s.shapes; nextNodeId = s.nextNodeId; 
+                selectedShape = null; tempStartNode = null; tempCheeseNodeB = null; tempEndPos = null; isPreviewFlipped = false; 
+                cleanupOrphanNodes(); redrawAll(); statusText.textContent = "一つ戻りました。"; 
+            } 
+        });
+        redoBtn.addEventListener("click", () => { 
+            if (redoStack.length) { 
+                undoStack.push({nodes:JSON.parse(JSON.stringify(nodes)), shapes:JSON.parse(JSON.stringify(shapes)), nextNodeId});
+                const s = redoStack.pop(); 
+                nodes = s.nodes; shapes = s.shapes; nextNodeId = s.nextNodeId; 
+                selectedShape = null; tempStartNode = null; tempCheeseNodeB = null; tempEndPos = null; isPreviewFlipped = false; 
+                cleanupOrphanNodes(); redrawAll(); statusText.textContent = "一つ進みました。"; 
+            } 
+        });
+
+        function getConnectedNodes(startNodeId) {
+            const visited = new Set();
+            const stack = [startNodeId];
+            while (stack.length > 0) {
+                const curr = stack.pop();
+                if (visited.has(curr)) continue;
+                visited.add(curr);
+                shapes.forEach(s => {
+                    if (s.type === "label" || s.type === "text") return;
+                    if (s.a === curr) {
+                        if (s.b && !visited.has(s.b)) stack.push(s.b);
+                        if (s.c && !visited.has(s.c)) stack.push(s.c);
+                    }
+                    if (s.b === curr) {
+                        if (s.a && !visited.has(s.a)) stack.push(s.a);
+                        if (s.c && !visited.has(s.c)) stack.push(s.c);
+                    }
+                    if (s.c === curr) {
+                        if (s.a && !visited.has(s.a)) stack.push(s.a);
+                        if (s.b && !visited.has(s.b)) stack.push(s.b);
+                    }
+                });
+            }
+            return visited;
+        }
+
+        function mergeNodes(srcId, destId) {
+            shapes.forEach(s => {
+                if (s.a === srcId) s.a = destId;
+                if (s.b === srcId) s.b = destId;
+                if (s.c === srcId) s.c = destId;
+            });
+            nodes = nodes.filter(n => n.id !== srcId);
+        }
+
+        canvas.addEventListener("mousedown", e => {
+            if (e.button === 2) { e.preventDefault(); if (tempStartNode) { tempStartNode = null; tempCheeseNodeB = null; tempEndPos = null; cleanupOrphanNodes(); redrawAll(); } else if (currentTool !== "select") activateTool("select"); return; }
+            if (e.button === 1 || isSpaceDown) { e.preventDefault(); isPanning = true; panStart = { x: e.clientX, y: e.clientY }; return; }
+            const pos = getCanvasPos(e);
+
+            // Select Mode
+            if (currentTool === "select") {
+                const label = shapes.find(s => s.type === "label" && (pos.x >= s.x - 10 && pos.x <= s.x + 100 && pos.y >= s.y - 20 && pos.y <= s.y + 10));
+                if (label) { 
+                    selectedShape = label; 
+                    statusText.textContent = "ラベル選択中"; 
+                    if(currentMode === "label") showPropertiesInLabelPanel(label);
+                    redrawAll(); 
+                    return; 
+                }
+                
+                selectedShape = findShapeAt(pos.x, pos.y);
+                statusText.textContent = selectedShape ? "選択中: " + selectedShape.type : "選択解除";
+                
+                if (selectedShape) { 
+                    if (selectedShape.color) { 
+                        pipeColorButtons.forEach(b => b.classList.remove("active")); 
+                        const btn = document.querySelector(`button[data-pipe-color="${selectedShape.color}"]`); 
+                        if (btn) btn.classList.add("active"); 
+                    }
+                    if(currentMode === "label") showPropertiesInLabelPanel(selectedShape);
+                } else {
+                    if(currentMode === "label") { labelPropContainer.innerHTML = ""; labelPropContainer.appendChild(propPlaceholder); }
+                }
+                redrawAll(); return;
+            }
+
+            // Edit Mode (Move)
+            if (currentTool === "edit") {
+                const label = shapes.find(s => s.type === "label" && (pos.x >= s.x - 10 && pos.x <= s.x + 100 && pos.y >= s.y - 20 && pos.y <= s.y + 10));
+                if (label) { draggingLabel = label; pushHistory(); return; }
+
+                let startNodeId = null;
+                const n = findNodeNear(pos.x, pos.y);
+                if (n) {
+                    startNodeId = n.id;
+                } else {
+                    const s = findShapeAt(pos.x, pos.y);
+                    if (s && s.type !== "text") startNodeId = s.a;
+                }
+
+                if (startNodeId !== null) {
+                    pushHistory();
+                    const groupIds = getConnectedNodes(startNodeId);
+                    draggingGroup = [];
+                    groupIds.forEach(id => {
+                        const node = getNode(id);
+                        if (node) draggingGroup.push({ node: node, ox: node.x, oy: node.y, dx: pos.x - node.x, dy: pos.y - node.y });
+                    });
+                    return;
+                }
+                isPanning = true; panStart = { x: e.clientX, y: e.clientY };
+                return;
+            }
+
+            // Drawing Mode (Only active in drawing mode tools)
+            if (currentMode === "drawing" && !["select", "edit"].includes(currentTool)) {
+                let clickedNode = findNodeNear(pos.x, pos.y);
+                if (!clickedNode) { 
+                    if (tempStartNode && tempEndPos) { clickedNode = createNode(tempEndPos.x, tempEndPos.y); }
+                    else { clickedNode = createNode(pos.x, pos.y); } 
+                }
+
+                if (!tempStartNode) { 
+                    // 1st Click: Start Point
+                    tempStartNode = clickedNode; 
+                    isPreviewFlipped = false; 
+                    statusText.textContent = "始点決定。終点をクリックしてください"; 
+                }
+                else {
+                    // Subsequent Clicks
+                    if (currentTool === "cheese") {
+                        if (!tempCheeseNodeB) {
+                            // 2nd Click (Cheese): Straight End (B)
+                            tempCheeseNodeB = clickedNode;
+                            // Reset tempEndPos to Center for next preview
+                            const cx = (tempStartNode.x + tempCheeseNodeB.x)/2;
+                            const cy = (tempStartNode.y + tempCheeseNodeB.y)/2;
+                            tempEndPos = {x: cx, y: cy - 20}; // Initial up hint
+                            statusText.textContent = "分岐方向を決定してください (3クリック目)";
+                            return; // Wait for 3rd click
+                        } else {
+                            // 3rd Click (Cheese): Branch End (C)
+                            pushHistory();
+                            const color = getColor();
+                            const defaultProps = { propType: "HI", propSize1: "13", propSize2: "" };
+                            const newId = genId();
+                            
+                            // Use tempEndPos calculated in mousemove for the branch location
+                            // unless clicked explicitly on a node, in which case use clickedNode
+                            let targetC = clickedNode;
+                            // Force use of calculated position if not clicking existing node
+                            const near = findNodeNear(pos.x, pos.y);
+                            if (!near && tempEndPos) {
+                                targetC = createNode(tempEndPos.x, tempEndPos.y);
+                            }
+
+                            shapes.push({ 
+                                type: "cheese", id: newId, 
+                                a: tempStartNode.id, b: tempCheeseNodeB.id, c: targetC.id, 
+                                color, flipped: isPreviewFlipped, ...defaultProps 
+                            });
+
+                            tempStartNode = null; tempCheeseNodeB = null; tempEndPos = null;
+                            activateTool("pipe");
+                            statusText.textContent = "配置完了 (直管モードに戻りました)";
+                            redrawAll();
+                            return;
+                        }
+                    }
+
+                    // Standard Tools (2-click)
+                    pushHistory();
+                    const color = getColor();
+                    const defaultProps = { propType: "HI", propSize1: "13", propSize2: "" };
+                    const newId = genId();
+                    
+                    if (currentTool === "elbow") {
+                        const connected = getConnectedPipeAngle(tempStartNode.id); const base = (connected !== null) ? connected : 0;
+                        let br = elbowPreviewAngle; const outPos = computeElbowOutNodePos(tempStartNode, base, br);
+                        let endNode = findNodeNear(outPos.x, outPos.y); if (!endNode) endNode = createNode(outPos.x, outPos.y);
+                        shapes.push({ type: "elbow", id: newId, a: tempStartNode.id, b: endNode.id, baseAngle: base, branchAngle: br, color, flipped: isPreviewFlipped, ...defaultProps });
+                    } else {
+                        let targetNodeId = clickedNode.id;
+                        shapes.push({ type: currentTool, id: newId, a: tempStartNode.id, b: targetNodeId, color, flipped: isPreviewFlipped, ...defaultProps });
+                    }
+                    tempStartNode = null; tempEndPos = null; statusText.textContent = "配置完了";
+
+                    if (currentTool !== "pipe") {
+                        activateTool("pipe");
+                        statusText.textContent = "配置完了 (直管モードに戻りました)";
+                    }
+                    redrawAll();
+                }
+            }
+        });
+
+        canvas.addEventListener("mousemove", e => {
+            const pos = getCanvasPos(e);
+            if (isPanning) { panX += e.clientX - panStart.x; panY += e.clientY - panStart.y; panStart = { x: e.clientX, y: e.clientY }; redrawAll(); return; }
+            if (draggingLabel) { draggingLabel.x = pos.x; draggingLabel.y = pos.y; redrawAll(); return; }
+
+            if (draggingGroup) {
+                snapIndicator = null;
+                const dx = pos.x - draggingGroup[0].ox - draggingGroup[0].dx;
+                const dy = pos.y - draggingGroup[0].oy - draggingGroup[0].dy;
+
+                draggingGroup.forEach(item => {
+                    item.node.x = item.ox + dx;
+                    item.node.y = item.oy + dy;
+                });
+
+                let snapDeltaX = 0, snapDeltaY = 0, snapped = false;
+                const draggingIds = new Set(draggingGroup.map(i => i.node.id));
+                const staticNodes = nodes.filter(n => !draggingIds.has(n.id));
+
+                for (const item of draggingGroup) {
+                    for (const staticNode of staticNodes) {
+                        const dist = Math.sqrt((item.node.x - staticNode.x) ** 2 + (item.node.y - staticNode.y) ** 2);
+                        if (dist < SNAP_DIST) {
+                            snapDeltaX = staticNode.x - item.node.x;
+                            snapDeltaY = staticNode.y - item.node.y;
+                            snapIndicator = { x: staticNode.x, y: staticNode.y };
+                            snapped = true;
+                            break;
+                        }
+                    }
+                    if (snapped) break;
+                }
+
+                if (snapped) {
+                    draggingGroup.forEach(item => { item.node.x += snapDeltaX; item.node.y += snapDeltaY; });
+                }
+                redrawAll();
+                return;
+            }
+
+            if (tempStartNode) {
+                if (currentTool === "cheese" && tempCheeseNodeB) {
+                    // Previewing Branch (Phase 2)
+                    const cx = (tempStartNode.x + tempCheeseNodeB.x)/2;
+                    const cy = (tempStartNode.y + tempCheeseNodeB.y)/2;
+                    const dx = pos.x - cx;
+                    const dy = pos.y - cy;
+                    let angle = Math.atan2(dy, dx);
+                    // Snap to 45 degrees
+                    angle = Math.round(angle / ANGLE_STEP) * ANGLE_STEP;
+                    
+                    // Fixed length for branch (Match the drawing size = 45px * scale)
+                    const dist = 45 * elbowScale; 
+                    
+                    tempEndPos = { 
+                        x: cx + Math.cos(angle) * dist, 
+                        y: cy + Math.sin(angle) * dist 
+                    };
+                    
+                    // Snap to existing node
+                    const near = findNodeNear(pos.x, pos.y);
+                    if(near && near !== tempStartNode && near !== tempCheeseNodeB) {
+                        tempEndPos = { x: near.x, y: near.y };
+                    }
+
+                } else {
+                    // Standard Preview
+                    const dx = pos.x - tempStartNode.x, dy = pos.y - tempStartNode.y;
+                    let angle = Math.atan2(dy, dx);
+                    angle = Math.round(angle / ANGLE_STEP) * ANGLE_STEP;
+                    
+                    if (currentTool === "elbow") {
+                        const s = elbowScale;
+                        const pvx = (ELBOW_PIVOT.x - ELBOW_IN.x) * s; const pvy = (ELBOW_PIVOT.y - ELBOW_IN.y) * s;
+                        const connected = getConnectedPipeAngle(tempStartNode.id); const base = (connected !== null) ? connected : 0;
+                        const Rb = rot2(base);
+                        const pivotX = tempStartNode.x + pvx * Rb.c - pvy * Rb.s; const pivotY = tempStartNode.y + pvx * Rb.s + pvy * Rb.c;
+                        let bestDist = Infinity; let bestAngle = 0;
+                        for (let i = 0; i < 8; i++) {
+                            let candAngle = i * ELBOW_ANGLE_STEP;
+                            const Rbr = rot2(candAngle);
+                            const ox = (ELBOW_OUT.x - ELBOW_PIVOT.x) * s; const oy = (ELBOW_OUT.y - ELBOW_PIVOT.y) * s;
+                            const candX = pivotX + ox * Rbr.c - oy * Rbr.s; const candY = pivotY + ox * Rbr.s + oy * Rbr.c;
+                            const d = (pos.x - candX) ** 2 + (pos.y - candY) ** 2;
+                            if (d < bestDist) { bestDist = d; bestAngle = candAngle; }
+                        }
+                        elbowPreviewAngle = bestAngle;
+                        const outPos = computeElbowOutNodePos(tempStartNode, base, bestAngle);
+                        tempEndPos = { x: outPos.x, y: outPos.y };
+                    } else {
+                        let dist = Math.sqrt(dx * dx + dy * dy);
+                        if(currentTool === "socket") dist = 80 * socketScale;
+                        else if(currentTool === "cheese") dist = 80 * socketScale; // Base length same as socket
+                        else if(currentTool === "mcUnion") dist = 70;
+                        else if(currentTool === "hojoValve") dist = 80;
+                        else if(currentTool === "fixedCustom") dist = 70;
+                        else if(currentTool === "meter") dist = METER_ANCHOR_DIST;
+                        
+                        tempEndPos = { x: tempStartNode.x + Math.cos(angle) * dist, y: tempStartNode.y + Math.sin(angle) * dist };
+                        if (currentTool === "pipe") {
+                            const near = findNodeNear(pos.x, pos.y);
+                            if (near && near !== tempStartNode) tempEndPos = { x: near.x, y: near.y };
+                        }
+                    }
+                }
+                redrawAll();
+            }
+        });
+
+        canvas.addEventListener("mouseup", () => {
+            if (draggingGroup) {
+                if (snapIndicator) {
+                    const draggingIds = new Set(draggingGroup.map(i => i.node.id));
+                    const staticNodes = nodes.filter(n => !draggingIds.has(n.id));
+                    for (const item of draggingGroup) {
+                        for (const staticNode of staticNodes) {
+                            if (Math.abs(item.node.x - staticNode.x) < 1 && Math.abs(item.node.y - staticNode.y) < 1) {
+                                mergeNodes(item.node.id, staticNode.id);
+                            }
+                        }
+                    }
+                }
+                draggingGroup = null;
+                snapIndicator = null;
+                redrawAll();
+            }
+            isPanning = false; draggingNode = null; draggingLabel = null;
+        });
+        canvas.addEventListener("contextmenu", e => e.preventDefault());
+
+        function findShapeAt(x, y) {
+            const tol = CLICK_TOLERANCE / zoom;
+            for (let i = shapes.length - 1; i >= 0; i--) {
+                const s = shapes[i];
+                if (s.type === "label") continue;
+                const nA = getNode(s.a), nB = s.b ? getNode(s.b) : null;
+                if (s.type === "text" && (x - s.x) ** 2 + (y - s.y) ** 2 < (20 / zoom) ** 2) return s;
+                if (!nA) continue;
+                if (s.type === "elbow" && (x - nA.x) ** 2 + (y - nA.y) ** 2 < (30 / zoom) ** 2) return s;
+                if (!nB) continue;
+                if (s.type === "pipe") { if (distPointToLineSegment(x, y, nA.x, nA.y, nB.x, nB.y) < tol) return s; }
+                else { const cx = (nA.x + nB.x) / 2, cy = (nA.y + nB.y) / 2; if ((x - cx) ** 2 + (y - cy) ** 2 < (25 / zoom) ** 2) return s; }
+            }
+            return null;
+        }
+        function distPointToLineSegment(px, py, x1, y1, x2, y2) {
+            const l2 = (x2 - x1) ** 2 + (y2 - y1) ** 2; if (l2 === 0) return Math.sqrt((px - x1) ** 2 + (py - y1) ** 2);
+            let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2; t = Math.max(0, Math.min(1, t));
+            return Math.sqrt((px - (x1 + t * (x2 - x1))) ** 2 + (py - (y1 + t * (y2 - y1))) ** 2);
+        }
+
+        // ---------------------------------------------------------
+        // Misc Listeners
+        // ---------------------------------------------------------
+        pipeColorButtons.forEach(btn => {
+            btn.addEventListener("click", () => {
+                pipeColorButtons.forEach(b => b.classList.remove("active")); btn.classList.add("active");
+                const c = btn.getAttribute("data-pipe-color");
+                if (currentTool === "select" && selectedShape) { pushHistory(); selectedShape.color = c; redrawAll(); }
+            });
+        });
+        deleteSelectedBtn.addEventListener("click", () => {
+            if (selectedShape) {
+                pushHistory(); shapes = shapes.filter(s => s !== selectedShape); selectedShape = null;
+                cleanupOrphanNodes();
+                if(currentMode === "label") { labelPropContainer.innerHTML = ""; labelPropContainer.appendChild(propPlaceholder); }
+                redrawAll();
+            }
+        });
+        flipBtn.addEventListener("click", doFlip);
+        
+        saveJsonBtn.addEventListener("click", () => {
+            const b = new Blob([JSON.stringify({ nodes, shapes, nextNodeId }, null, 2)], { type: "application/json" });
+            const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = "haikan_v3_2.json"; a.click();
+        });
+        loadJsonBtn.addEventListener("click", () => fileInput.click());
+        fileInput.addEventListener("change", e => {
+            const f = e.target.files[0]; if (!f) return;
+            const r = new FileReader();
+            r.onload = ev => { 
+                try { 
+                    const d = JSON.parse(ev.target.result); 
+                    nodes = d.nodes || []; shapes = d.shapes || []; nextNodeId = d.nextNodeId || 1; 
+                    setMode("drawing");
+                    redrawAll(); 
+                } catch (err) { alert("Error"); } 
+            };
+            r.readAsText(f);
+        });
+        saveJpgBtn.addEventListener("click", () => {
+            const prevSelect = selectedShape;
+            const wasGridActive = toggleGridBtn.classList.contains("active");
+            selectedShape = null;
+            toggleGridBtn.classList.remove("active");
+            isExporting = true;
+            redrawAll();
+            const a = document.createElement("a");
+            a.download = "haikan.jpg";
+            a.href = canvas.toDataURL("image/jpeg", 0.9);
+            a.click();
+            isExporting = false;
+            selectedShape = prevSelect;
+            if (wasGridActive) toggleGridBtn.classList.add("active");
+            redrawAll();
+        });
+        clearBtn.addEventListener("click", () => { if (confirm("Delete All?")) { pushHistory(); nodes = []; shapes = []; nextNodeId = 1; selectedShape = null; redrawAll(); } });
+        toggleGridBtn.addEventListener("click", () => { toggleGridBtn.classList.toggle("active"); redrawAll(); });
+        toggleGridBtn.classList.add("active");
+
+        function updateZoom(newZoom) {
+            zoom = Math.max(0.5, Math.min(3, newZoom));
+            zoomSlider.value = zoom;
+            zoomSliderLabel.value = zoom;
+            zoomLabel.textContent = Math.round(zoom * 100) + "%";
+            zoomLabelLabel.textContent = Math.round(zoom * 100) + "%";
+            redrawAll();
+        }
+
+        socketSizeInput.addEventListener("input", () => { socketScale = (parseInt(socketSizeInput.value) || 50) / 50; socketSizeLabel.textContent = socketSizeInput.value + "%"; redrawAll(); });
+        elbowSizeInput.addEventListener("input", () => { elbowScale = (parseInt(elbowSizeInput.value) || 100) / 100; elbowSizeLabel.textContent = elbowSizeInput.value + "%"; redrawAll(); });
+        
+        // Sync sliders
+        zoomSlider.addEventListener("input", () => updateZoom(parseFloat(zoomSlider.value)));
+        zoomSliderLabel.addEventListener("input", () => updateZoom(parseFloat(zoomSliderLabel.value)));
+        
+        zoomInBtn.addEventListener("click", () => updateZoom(zoom + 0.1));
+        zoomOutBtn.addEventListener("click", () => updateZoom(zoom - 0.1));
+        zoomResetBtn.addEventListener("click", () => { panX = 0; panY = 0; updateZoom(1.0); });
+        
+        zoomInBtnLabel.addEventListener("click", () => updateZoom(zoom + 0.1));
+        zoomOutBtnLabel.addEventListener("click", () => updateZoom(zoom - 0.1));
+        zoomResetBtnLabel.addEventListener("click", () => { panX = 0; panY = 0; updateZoom(1.0); });
+
+        // Initial Draw
+        socketScale = (parseInt(socketSizeInput.value) || 50) / 50;
+        elbowScale = (parseInt(elbowSizeInput.value) || 100) / 100;
+        setMode("drawing");
+        redrawAll();
+    </script>
+</body>
+</html>

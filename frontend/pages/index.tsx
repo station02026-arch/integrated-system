@@ -1,20 +1,14 @@
-// frontend/pages/index.tsx (フルコード - リダイレクト処理に修正)
+// frontend/pages/index.tsx (フルコード - 最終修正版)
 
 import Head from 'next/head'
 import AuthForm from '@/components/AuthForm'
 import { useAuth } from '@/components/AuthContainer' 
 import { supabase } from '@/utils/supabaseClient'
-import { useRouter } from 'next/router'; // ★追加
-
-// 現場作業員向けのダッシュボード（骨組み） - このページでは使わないため削除
-// const FieldDashboard = () => { ... } 
-// 管理者向けのダッシュボード（骨組み） - このページでは使わないため削除
-// const AdminDashboard = () => { ... }
-
+import { useRouter } from 'next/router';
 
 const HomePage = () => {
   const { user, role, loading } = useAuth();
-  const router = useRouter(); // ★追加
+  const router = useRouter();
 
   // 認証情報の取得中
   if (loading) {
@@ -35,31 +29,29 @@ const HomePage = () => {
     );
   }
 
-  // ログイン済みだが role の取得がまだの場合
+  // ログイン済みだが role の取得がまだの場合（ここで待機する）
+  // AuthContainerで authReady を使って待機するロジックに変更したため、ここは簡易化
   if (!role) {
      return (
         <div className="flex justify-center items-center min-h-screen">
-            <p className="text-lg text-red-600">🚨 ユーザー権限情報(role)を取得できませんでした。データベースを確認してください。</p>
-            <button onClick={() => supabase.auth.signOut()}>再ログイン</button>
+            <p className="text-lg text-gray-500">ユーザー権限情報を最終確認中...</p>
         </div>
      );
   }
 
   // 権限(role)に応じて画面を振り分ける
   if (role === 'field') {
-    // 現場（field）権限の場合は、専用のダッシュボードにリダイレクト
-    return (
-        <div className="p-8 text-blue-600">
-            現場ユーザーとしてログインしました。専用画面に移動します...
-            {/* ここでrouter.push('/field-dashboard')などを行うが、一旦メッセージ表示に留める */}
-            <button onClick={() => supabase.auth.signOut()}>ログアウト</button>
-        </div>
-    );
+    // 現場（field）権限の場合は、専用のダッシュボードに強制遷移 (履歴に残さないreplaceを使用)
+    // ★修正: replace を使用
+    router.replace('/field-dashboard'); 
   } else {
-    // field 以外の全てのロールは顧客管理画面にリダイレクト
-    router.push('/customers'); // ★顧客管理画面に強制遷移
-    return <div className="p-8">管理画面へ移動中...</div>;
+    // field 以外の全てのロールは顧客管理画面に強制遷移 (履歴に残さないreplaceを使用)
+    // ★修正: replace を使用
+    router.replace('/customers'); 
   }
+  
+  // リダイレクト中であることを表示
+  return <div className="p-8">権限を確認し、専用画面へ移動中...</div>;
 };
 
 export default HomePage;

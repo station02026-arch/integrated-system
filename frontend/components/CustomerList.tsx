@@ -12,19 +12,19 @@ interface Customer {
     created_at: string;
 }
 
-const CustomerList: React.FC = () => {
+const CustomerList: React.FC<{ onCustomerRegistered?: number }> = ({ onCustomerRegistered }) => {
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
     useEffect(() => {
         fetchCustomers();
-    }, []);
+    }, [onCustomerRegistered]);
 
     const fetchCustomers = async () => {
         setLoading(true);
         setError('');
-        
+
         // データベースから顧客データを全て取得
         const { data, error } = await supabase
             .from('customers')
@@ -37,7 +37,7 @@ const CustomerList: React.FC = () => {
             setLoading(false);
             return;
         }
-        
+
         setCustomers(data || []);
         setLoading(false);
     };
@@ -49,7 +49,7 @@ const CustomerList: React.FC = () => {
     if (error) {
         return <p className="text-red-600">エラー: {error}</p>;
     }
-    
+
     // 登録された顧客がいない場合
     if (customers.length === 0) {
         return (
